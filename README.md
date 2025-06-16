@@ -2,7 +2,7 @@
 
 A secure mobile application for verifying Web3 message signatures and blockchain-based identity verification. Built with Expo Router, React Native, and integrated with Supabase for data management and Algorand blockchain for verification.
 
-![Web3 Message Verifier](https://images.pexels.com/photos/5380664/pexels-photo-5380664.jpeg?auto=compress&cs=tinysrgb&w=1200&h=400&fit=crop)
+![Message Verifier](https://images.pexels.com/photos/5380664/pexels-photo-5380664.jpeg?auto=compress&cs=tinysrgb&w=1200&h=400&fit=crop)
 
 ## 🌟 Features
 
