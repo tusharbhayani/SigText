@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Web3 Message Verifier",
+    "name": "Message Verifier",
     "slug": "web3-message-verifier",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app_icon.png",
     "scheme": "web3verifier",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -12,16 +12,17 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to scan QR codes for message verification.",
-        "NSMicrophoneUsageDescription": "This app may need microphone access for voice feedback features."
-      }
+        "NSMicrophoneUsageDescription": "This app may need microphone access for voice feedback features.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.web3verifier.app"
     },
     "android": {
       "compileSdkVersion": 34,
       "targetSdkVersion": 34,
       "minSdkVersion": 21,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#6366F1"
+        "foregroundImage": "./assets/images/app_icon.png"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -32,19 +33,41 @@
         "android.permission.WAKE_LOCK",
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.READ_PHONE_STATE"
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       "package": "com.web3verifier.app"
     },
-    "web": {
-      "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
+    "build": {
+      "preview": {
+        "android": {
+          "buildType": "apk"
+        }
+      },
+      "preview2": {
+        "android": {
+          "gradleCommand": ":app:assembleRelease"
+        }
+      },
+      "preview3": {
+        "developmentClient": true
+      },
+      "preview4": {
+        "distribution": "internal"
+      },
+      "production": {}
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       [
@@ -56,7 +79,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/app_icon.png",
           "color": "#6366F1",
           "defaultChannel": "default"
         }
@@ -64,6 +87,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "707b6cec-e7e3-4c46-bb07-7b47910b580e"
+      }
     }
   }
 }
