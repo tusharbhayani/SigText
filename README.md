@@ -2,8 +2,12 @@
 
 A secure mobile application for verifying Web3 message signatures and blockchain-based identity verification. Built with Expo Router, React Native, and integrated with Supabase for data management and Algorand blockchain for verification.
 
-![Mobile first Message Verifier]
-<td style="background:#222; text-align:center;"><img src="assets/images/bolt.png" width="400px"></td>
+Mobile first Message Verifier
+
+<td style="background:#222; text-align:center;"><img src="assets/images/bolt.png" width="250px"></td>
+<td style="background:#222; text-align:center;"><img src="assets/images/algorand.png" width="250px"></td>
+<td style="background:#222; text-align:center;"><img src="assets/images/elevenLabs.png" width="250px"></td>
+<td style="background:#222; text-align:center;"><img src="assets/images/supabase.png" width="250px"></td>
 
 ## 🌟 Features
 
