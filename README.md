@@ -3,7 +3,7 @@
 A secure mobile application for verifying Web3 message signatures and blockchain-based identity verification. Built with Expo Router, React Native, and integrated with Supabase for data management and Algorand blockchain for verification.
 
 ![Mobile first Message Verifier]
-<td style="background:#222; text-align:center;"><img src="src/public/bolt-badge/white_circle_360x360/white_circle_360x360.png" height="60"></td>
+<td style="background:#222; text-align:center;"><img src="assets/images/bolt.png" width="400px"></td>
 
 ## 🌟 Features
 
