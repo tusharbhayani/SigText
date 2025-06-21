@@ -279,16 +279,16 @@ class VoiceService {
    */
   getStatus(): {
     available: boolean;
-    provider: 'elevenlabs' | 'expo-speech' | 'web-speech' | 'none';
+    provider: 'ElevenLabs' | 'expo-speech' | 'web-speech' | 'none';
     hasApiKey: boolean;
     platform: string;
   } {
     const hasApiKey = !!this.config.apiKey;
 
-    if (hasApiKey && Platform.OS === 'web') {
+    if (hasApiKey) {
       return {
         available: true,
-        provider: 'elevenlabs',
+        provider: 'ElevenLabs',
         hasApiKey: true,
         platform: Platform.OS,
       };

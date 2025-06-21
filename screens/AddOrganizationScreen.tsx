@@ -79,15 +79,61 @@ const InputField = ({
 
 export default function AddOrganizationScreen({ navigation }: any) {
   const { colors } = useTheme()
-  const [name, setName] = useState("Verification")
-  const [domain, setDomain] = useState("https://verification.com")
-  const [description, setDescription] = useState("Verify your identity with Verification App")
-  const [walletAddress, setWalletAddress] = useState("0xe688b84b23f322a994A53dbF8E15FA82CDB71127")
-  const [publicKey, setPublicKey] = useState("04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd")
-  const [websiteUrl, setWebsiteUrl] = useState("https://verification.com")
-  const [contactEmail, setContactEmail] = useState("support@verification.com")
+
+  // Generate realistic default values
+  const generateWalletAddress = () => {
+    return "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")
+  }
+
+  const generatePublicKey = () => {
+    return "04" + Array.from({ length: 126 }, () => Math.floor(Math.random() * 16).toString(16)).join("")
+  }
+
+  const [name, setName] = useState("")
+  const [domain, setDomain] = useState("")
+  const [description, setDescription] = useState("")
+  const [walletAddress, setWalletAddress] = useState("")
+  const [publicKey, setPublicKey] = useState("")
+  const [websiteUrl, setWebsiteUrl] = useState("")
+  const [contactEmail, setContactEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const fillSampleData = () => {
+    const sampleCompanies = [
+      {
+        name: "TechFlow Solutions",
+        domain: "techflow.com",
+        description: "Advanced technology solutions for modern businesses",
+        website: "https://techflow.com",
+        email: "security@techflow.com",
+      },
+      {
+        name: "DataSecure Corp",
+        domain: "datasecure.io",
+        description: "Enterprise data security and blockchain verification",
+        website: "https://datasecure.io",
+        email: "verify@datasecure.io",
+      },
+      {
+        name: "CryptoVault Systems",
+        domain: "cryptovault.net",
+        description: "Secure cryptocurrency and digital asset management",
+        website: "https://cryptovault.net",
+        email: "support@cryptovault.net",
+      },
+    ]
+
+    const sample = sampleCompanies[Math.floor(Math.random() * sampleCompanies.length)]
+
+    setName(sample.name)
+    setDomain(sample.domain)
+    setDescription(sample.description)
+    setWalletAddress(generateWalletAddress())
+    setPublicKey(generatePublicKey())
+    setWebsiteUrl(sample.website)
+    setContactEmail(sample.email)
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -167,19 +213,23 @@ export default function AddOrganizationScreen({ navigation }: any) {
       })
 
       if (error) {
-        Alert.alert("Error", "Failed to create organization: " + error.message)
+        console.error("Create organization error:", error)
+        Alert.alert("Error", "Failed to create organization: " + (error.message || "Unknown error"))
         return
       }
 
       Alert.alert("Success", "Organization created successfully and pending verification", [
         {
           text: "OK",
-          onPress: () => navigation.goBack(),
+          onPress: () => {
+            // Navigate back and refresh the organizations list
+            navigation.navigate("Organizations", { refresh: true })
+          },
         },
       ])
     } catch (error) {
-      console.error("Error creating organization:", error)
-      Alert.alert("Error", "An unexpected error occurred")
+      console.error("Exception in handleSubmit:", error)
+      Alert.alert("Error", "An unexpected error occurred while creating the organization")
     } finally {
       setLoading(false)
     }
@@ -187,7 +237,7 @@ export default function AddOrganizationScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView style={{ flex: 1 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -196,7 +246,12 @@ export default function AddOrganizationScreen({ navigation }: any) {
             <ArrowLeft size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>Add Organization</Text>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            onPress={fillSampleData}
+            style={[styles.sampleButton, { backgroundColor: colors.primary + "20" }]}
+          >
+            <Text style={[styles.sampleButtonText, { color: colors.primary }]}>Sample</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -333,6 +388,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: "Inter-Bold",
+  },
+  sampleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  sampleButtonText: {
+    fontSize: 12,
+    fontFamily: "Inter-SemiBold",
   },
   scrollView: {
     flex: 1,

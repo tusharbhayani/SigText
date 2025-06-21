@@ -1,6 +1,3 @@
-// SMS Parsing and Verification Service
-// Enhanced with Android 13+ compatibility
-
 import { Platform } from 'react-native';
 
 interface ParsedSMS {
@@ -22,6 +19,16 @@ interface SMSSignaturePattern {
   pattern: RegExp;
   extractor: (match: RegExpMatchArray) => string;
 }
+
+// Helper function to generate realistic wallet addresses
+const generateRealisticWalletAddress = (): string => {
+  const chars = '0123456789abcdef';
+  let result = '0x';
+  for (let i = 0; i < 40; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 class SMSService {
   private signaturePatterns: SMSSignaturePattern[] = [
@@ -53,7 +60,7 @@ class SMSService {
     },
   ];
 
-  private isAndroid13Plus: boolean = false;
+  private isAndroid13Plus = false;
 
   constructor() {
     if (Platform.OS === 'android') {
@@ -137,7 +144,7 @@ class SMSService {
   /**
    * Get SMS messages with Android version compatibility
    */
-  async getSMSMessages(maxCount: number = 50): Promise<{
+  async getSMSMessages(maxCount = 50): Promise<{
     messages: any[];
     success: boolean;
     method: 'native' | 'demo';
@@ -169,7 +176,7 @@ class SMSService {
     displayName?: string;
     isShortCode?: boolean;
   } {
-    const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+    const phoneRegex = /^\+?[\d\s\-$$$$]+$/;
     const shortCodeRegex = /^\d{3,6}$/;
 
     if (shortCodeRegex.test(sender)) {
@@ -181,7 +188,7 @@ class SMSService {
 
     if (phoneRegex.test(sender)) {
       return {
-        phoneNumber: sender.replace(/[\s\-\(\)]/g, ''),
+        phoneNumber: sender.replace(/[\s\-$$$$]/g, ''),
         isShortCode: false,
       };
     }
@@ -196,56 +203,58 @@ class SMSService {
    * Get demo SMS messages for testing and Android 13+ fallback
    */
   private getDemoSMSMessages(): any[] {
-    return [
-      {
-        _id: '1',
-        address: '+1234567890',
-        body: 'Your bank account has been accessed. Transaction ID: 123456 [SIG:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456]',
-        date: Date.now() - 3600000,
-        type: 1,
-        read: 0,
-      },
-      {
-        _id: '2',
-        address: 'SERVICE',
-        body: 'Welcome to our service! Your verification code is 789012 [WEB3SIG:0x1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef01234]',
-        date: Date.now() - 7200000,
-        type: 1,
-        read: 1,
-      },
-      {
-        _id: '3',
-        address: '+9876543210',
-        body: 'Meeting scheduled for tomorrow at 3 PM in Conference Room A [SIGNATURE:SGVsbG8gV29ybGQgVGhpcyBJcyBBIFRlc3QgU2lnbmF0dXJl]',
-        date: Date.now() - 10800000,
-        type: 1,
-        read: 1,
-      },
-      {
-        _id: '4',
-        address: 'SHIPPING',
-        body: 'Your order #12345 has been shipped. Track: ABC123XYZ [ETH:0x1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567890abcdef0123456789abcdef0123456789abcdef]',
-        date: Date.now() - 14400000,
-        type: 1,
-        read: 1,
-      },
-      {
-        _id: '5',
-        address: 'SECURITY',
-        body: 'Security alert: New login detected from unknown device',
-        date: Date.now() - 18000000,
-        type: 1,
-        read: 1,
-      },
-      {
-        _id: '6',
-        address: '+5551234567',
-        body: 'Payment received: $50.00 from John Doe [SIG:b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a1]',
-        date: Date.now() - 21600000,
-        type: 1,
-        read: 1,
-      },
+    const currentTime = Date.now();
+    const companies = [
+      { name: 'CryptoSecure Technologies', phone: '+1-555-0123' },
+      { name: 'FinanceFlow Digital', phone: '+1-555-0456' },
+      { name: 'MedChain Innovations', phone: '+1-555-0789' },
+      { name: 'BlockTrust Solutions', phone: '+1-555-0321' },
+      { name: 'SecureVault Systems', phone: '+1-555-0654' },
     ];
+
+    const messageTemplates = [
+      (company: any) =>
+        `Your ${company.name} account balance: $${(
+          Math.random() * 50000 +
+          1000
+        ).toFixed(
+          2
+        )}. Ref: ${this.generateTransactionId()} [SIG:${this.generateHexSignature()}]`,
+      (company: any) =>
+        `${
+          company.name
+        } verification code: ${this.generateVerificationCode()} [WEB3SIG:0x${this.generateWeb3Signature()}]`,
+      (company: any) =>
+        `${
+          company.name
+        }: Meeting scheduled for ${this.generateDate()} at ${this.generateTime()} [SIGNATURE:${this.generateBase64Signature()}]`,
+      (company: any) =>
+        `${
+          company.name
+        } shipping: Order #${this.generateOrderId()} shipped. Track: ${this.generateTrackingId()} [ETH:0x${this.generateEthSignature()}]`,
+      (company: any) =>
+        `${
+          company.name
+        } security alert: Login from ${this.generateLocation()} at ${new Date().toLocaleTimeString()}`,
+      (company: any) =>
+        `${
+          company.name
+        }: Payment $${this.generateAmount()} from ${this.generateName()} [SIG:${this.generateHexSignature()}]`,
+    ];
+
+    return Array.from({ length: 6 }, (_, index) => {
+      const company = companies[index % companies.length];
+      const template = messageTemplates[index % messageTemplates.length];
+
+      return {
+        _id: `sms-${currentTime}-${index}`,
+        address: company.phone,
+        body: template(company),
+        date: currentTime - index * 3600000 - Math.random() * 3600000,
+        type: 1,
+        read: Math.random() > 0.3 ? 1 : 0,
+      };
+    });
   }
 
   /**
@@ -256,12 +265,10 @@ class SMSService {
     signatureType: 'hex' | 'base64' | 'web3' | 'ethereum' = 'hex'
   ): string {
     const signatures = {
-      hex: '[SIG:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456]',
-      base64:
-        '[SIGNATURE:SGVsbG8gV29ybGQgVGhpcyBJcyBBIFRlc3QgU2lnbmF0dXJlIEZvciBEZW1vbnN0cmF0aW9u]',
-      web3: '[WEB3SIG:0x1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0]',
-      ethereum:
-        '[ETH:0x1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567890abcdef0123456789abcdef0123456789abcdef]',
+      hex: `[SIG:${this.generateHexSignature()}]`,
+      base64: `[SIGNATURE:${this.generateBase64Signature()}]`,
+      web3: `[WEB3SIG:0x${this.generateWeb3Signature()}]`,
+      ethereum: `[ETH:0x${this.generateEthSignature()}]`,
     };
 
     return `${message} ${signatures[signatureType]}`;
@@ -284,23 +291,153 @@ class SMSService {
     return cleaned;
   }
 
+  // Private helper methods for generating realistic test data
+
+  private generateHexSignature(): string {
+    return Array.from({ length: 64 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+  }
+
+  private generateWeb3Signature(): string {
+    return Array.from({ length: 128 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+  }
+
+  private generateEthSignature(): string {
+    return Array.from({ length: 130 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+  }
+
+  private generateBase64Signature(): string {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    return (
+      Array.from(
+        { length: 88 },
+        () => chars[Math.floor(Math.random() * chars.length)]
+      ).join('') + '=='
+    );
+  }
+
+  private generateTransactionId(): string {
+    return Math.random().toString(36).substr(2, 8).toUpperCase();
+  }
+
+  private generateVerificationCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private generateOrderId(): string {
+    return Math.floor(10000 + Math.random() * 90000).toString();
+  }
+
+  private generateTrackingId(): string {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    return (
+      Array.from(
+        { length: 3 },
+        () => letters[Math.floor(Math.random() * letters.length)]
+      ).join('') +
+      Array.from(
+        { length: 6 },
+        () => numbers[Math.floor(Math.random() * numbers.length)]
+      ).join('')
+    );
+  }
+
+  private generateTime(): string {
+    const hour = Math.floor(Math.random() * 12) + 1;
+    const minute = Math.random() > 0.5 ? '00' : '30';
+    const ampm = Math.random() > 0.5 ? 'AM' : 'PM';
+    return `${hour}:${minute} ${ampm}`;
+  }
+
+  private generateDate(): string {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toLocaleDateString();
+  }
+
+  private generateLocation(): string {
+    const cities = [
+      'New York',
+      'London',
+      'Tokyo',
+      'Sydney',
+      'Paris',
+      'Berlin',
+      'Toronto',
+      'Singapore',
+    ];
+    return cities[Math.floor(Math.random() * cities.length)];
+  }
+
+  private generateAmount(): string {
+    return (Math.random() * 1000 + 10).toFixed(2);
+  }
+
+  private generateName(): string {
+    const firstNames = [
+      'John',
+      'Jane',
+      'Mike',
+      'Sarah',
+      'David',
+      'Lisa',
+      'Chris',
+      'Emma',
+    ];
+    const lastNames = [
+      'Smith',
+      'Johnson',
+      'Williams',
+      'Brown',
+      'Jones',
+      'Garcia',
+      'Miller',
+      'Davis',
+    ];
+    return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${
+      lastNames[Math.floor(Math.random() * lastNames.length)]
+    }`;
+  }
+
   // Private methods
 
   private simulateSMSForDemo(callback: (sms: ParsedSMS) => void) {
+    const companies = [
+      { name: 'CryptoSecure Technologies', phone: '+1-555-0123' },
+      { name: 'FinanceFlow Digital', phone: '+1-555-0456' },
+      { name: 'MedChain Innovations', phone: '+1-555-0789' },
+    ];
+
     const testMessages = [
       {
-        text: 'Your bank account has been accessed. Transaction ID: 123456 [SIG:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456]',
-        sender: '+1234567890',
+        text: `Your ${companies[0].name} account balance: $${(
+          Math.random() * 50000 +
+          1000
+        ).toFixed(
+          2
+        )}. Ref: ${this.generateTransactionId()} [SIG:${this.generateHexSignature()}]`,
+        sender: companies[0].phone,
         delay: 2000,
       },
       {
-        text: 'Welcome to our service! Your verification code is 789012 [WEB3SIG:0x1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef01234]',
-        sender: 'SERVICE',
+        text: `${
+          companies[1].name
+        } verification code: ${this.generateVerificationCode()} [WEB3SIG:0x${this.generateWeb3Signature()}]`,
+        sender: companies[1].phone,
         delay: 5000,
       },
       {
-        text: 'Meeting scheduled for tomorrow at 3 PM in Conference Room A [SIGNATURE:SGVsbG8gV29ybGQgVGhpcyBJcyBBIFRlc3QgU2lnbmF0dXJl]',
-        sender: '+9876543210',
+        text: `${
+          companies[2].name
+        }: Meeting scheduled for ${this.generateDate()} at ${this.generateTime()} [SIGNATURE:${this.generateBase64Signature()}]`,
+        sender: companies[2].phone,
         delay: 8000,
       },
     ];

@@ -1,4 +1,3 @@
-import type React from "react"
 import { useState, useEffect } from "react"
 import {
   View,
@@ -28,10 +27,12 @@ import {
 import { useTheme } from "../contexts/ThemeContext"
 import { getOrganizations, addSampleOrganizations, type Organization } from "../lib/supabase"
 import * as Animatable from "react-native-animatable"
+import { useFocusEffect } from "@react-navigation/native"
+import { useCallback } from "react"
 
 const { width: screenWidth } = Dimensions.get("window")
 
-export default function OrganizationsScreen({ navigation }: any) {
+export default function OrganizationsScreen({ navigation, route }: any) {
   const { colors } = useTheme()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([])
@@ -41,9 +42,21 @@ export default function OrganizationsScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true)
   const [addingSamples, setAddingSamples] = useState(false)
 
+  // Load organizations when screen comes into focus or when refresh param is passed
+  useFocusEffect(
+    useCallback(() => {
+      loadOrganizations()
+    }, []),
+  )
+
+  // Also load when route params indicate refresh
   useEffect(() => {
-    loadOrganizations()
-  }, [])
+    if (route?.params?.refresh) {
+      loadOrganizations()
+      // Clear the refresh param
+      navigation.setParams({ refresh: undefined })
+    }
+  }, [route?.params?.refresh])
 
   useEffect(() => {
     filterOrganizations()
@@ -56,13 +69,14 @@ export default function OrganizationsScreen({ navigation }: any) {
 
       if (error) {
         console.error("Error loading organizations:", error)
-        Alert.alert("Error", "Failed to load organizations")
+        Alert.alert("Error", "Failed to load organizations: " + (error.message || "Unknown error"))
         return
       }
 
+      console.log("Loaded organizations:", data?.length || 0)
       setOrganizations(data || [])
     } catch (error) {
-      console.error("Error loading organizations:", error)
+      console.error("Exception in loadOrganizations:", error)
       Alert.alert("Error", "Failed to load organizations")
     } finally {
       setLoading(false)
@@ -154,21 +168,6 @@ export default function OrganizationsScreen({ navigation }: any) {
     }
   }
 
-  const openWebsite = (url?: string) => {
-    if (url) {
-      Alert.alert("Website", `Would open: ${url}`)
-    }
-  }
-
-  const copyWalletAddress = (address: string) => {
-    Alert.alert("Copied", `Wallet address copied: ${address.substring(0, 10)}...`)
-  }
-
-  const truncateAddress = (address: string) => {
-    if (address.length <= 20) return address
-    return `${address.substring(0, 8)}...${address.substring(address.length - 8)}`
-  }
-
   const FilterButton = ({
     type,
     label,
@@ -210,99 +209,107 @@ export default function OrganizationsScreen({ navigation }: any) {
     )
   }
 
-  const OrganizationCard = ({ organization, index }: { organization: Organization; index: number }) => (
+  const OrganizationCard = ({ org, index }: { org: Organization; index: number }) => (
     <Animatable.View
       animation="fadeInUp"
-      delay={index * 50}
+      delay={index * 100}
       style={[styles.organizationCard, { backgroundColor: colors.cardBackground }]}
     >
-      {/* Header */}
       <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          {organization.logo_url ? (
-            <Image source={{ uri: organization.logo_url }} style={styles.organizationLogo} />
+        <View style={styles.orgInfo}>
+          {org.logo_url ? (
+            <Image source={{ uri: org.logo_url }} style={styles.orgLogo} />
           ) : (
-            <View style={[styles.organizationLogo, { backgroundColor: colors.primary + "20" }]}>
-              <Shield size={24} color={colors.primary} />
+            <View style={[styles.orgLogoPlaceholder, { backgroundColor: colors.primary + "20" }]}>
+              <Shield size={20} color={colors.primary} />
             </View>
           )}
-          <View style={styles.organizationInfo}>
-            <Text style={[styles.organizationName, { color: colors.text }]} numberOfLines={1}>
-              {organization.name}
-            </Text>
-            {organization.domain && (
-              <Text style={[styles.organizationDomain, { color: colors.textSecondary }]} numberOfLines={1}>
-                {organization.domain}
-              </Text>
-            )}
+          <View style={styles.orgDetails}>
+            <Text style={[styles.orgName, { color: colors.text }]}>{org.name}</Text>
+            {org.domain && <Text style={[styles.orgDomain, { color: colors.textSecondary }]}>{org.domain}</Text>}
           </View>
         </View>
-
-        <View
-          style={[styles.statusBadge, { backgroundColor: getStatusColor(organization.verification_status) + "20" }]}
-        >
-          {getStatusIcon(organization.verification_status)}
-          <Text style={[styles.statusText, { color: getStatusColor(organization.verification_status) }]}>
-            {getStatusText(organization.verification_status)}
+        <View style={styles.statusContainer}>
+          {getStatusIcon(org.verification_status)}
+          <Text style={[styles.statusText, { color: getStatusColor(org.verification_status) }]}>
+            {getStatusText(org.verification_status)}
           </Text>
         </View>
       </View>
 
-      {/* Description */}
-      {organization.description && (
-        <Text style={[styles.organizationDescription, { color: colors.text }]} numberOfLines={2}>
-          {organization.description}
+      {org.description && (
+        <Text style={[styles.orgDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+          {org.description}
         </Text>
       )}
 
-      {/* Wallet Address */}
-      <Pressable style={styles.walletContainer} onPress={() => copyWalletAddress(organization.wallet_address)}>
-        <Text style={[styles.walletLabel, { color: colors.textSecondary }]}>Wallet:</Text>
-        <Text style={[styles.walletAddress, { color: colors.primary }]}>
-          {truncateAddress(organization.wallet_address)}
+      <View style={styles.walletContainer}>
+        <Text style={[styles.walletLabel, { color: colors.textSecondary }]}>Wallet Address:</Text>
+        <Text style={[styles.walletAddress, { color: colors.text }]} numberOfLines={1}>
+          {org.wallet_address}
         </Text>
-      </Pressable>
-
-      {/* Actions */}
-      <View style={styles.cardActions}>
-        {organization.website_url && (
-          <Pressable
-            style={[styles.actionButton, { backgroundColor: colors.surface }]}
-            onPress={() => openWebsite(organization.website_url)}
-          >
-            <Globe size={14} color={colors.text} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>Website</Text>
-          </Pressable>
-        )}
-
-        {organization.contact_email && (
-          <Pressable
-            style={[styles.actionButton, { backgroundColor: colors.surface }]}
-            onPress={() => Alert.alert("Contact", organization.contact_email)}
-          >
-            <Mail size={14} color={colors.text} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>Contact</Text>
-          </Pressable>
-        )}
-
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-          onPress={() => Alert.alert("Details", `Organization ID: ${organization.id}`)}
-        >
-          <ExternalLink size={14} color={colors.primary} />
-          <Text style={[styles.actionButtonText, { color: colors.primary }]}>Details</Text>
-        </Pressable>
       </View>
 
-      {/* Metadata */}
-      <View style={styles.cardMetadata}>
-        <Text style={[styles.metadataText, { color: colors.textSecondary }]}>
-          Created: {new Date(organization.created_at).toLocaleDateString()}
-        </Text>
+      <View style={styles.cardFooter}>
+        <View style={styles.orgMeta}>
+          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            Added {new Date(org.created_at).toLocaleDateString()}
+          </Text>
+        </View>
+        <View style={styles.cardActions}>
+          {org.website_url && (
+            <Pressable style={[styles.actionButton, { backgroundColor: colors.surface }]}>
+              <ExternalLink size={16} color={colors.primary} />
+            </Pressable>
+          )}
+          {org.contact_email && (
+            <Pressable style={[styles.actionButton, { backgroundColor: colors.surface }]}>
+              <Mail size={16} color={colors.primary} />
+            </Pressable>
+          )}
+        </View>
       </View>
     </Animatable.View>
   )
 
+  const EmptyState = () => (
+    <Animatable.View animation="fadeIn" style={styles.emptyState}>
+      <Shield size={64} color={colors.textSecondary} />
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No Organizations Found</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+        {searchQuery || filterType !== "all"
+          ? "Try adjusting your search or filter"
+          : "Add your first organization to get started"}
+      </Text>
+      {!searchQuery && filterType === "all" && (
+        <View style={styles.emptyActions}>
+          <Pressable
+            style={[styles.emptyActionButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate("AddOrganization")}
+          >
+            <Plus size={20} color="white" />
+            <Text style={styles.emptyActionText}>Add Organization</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.emptyActionButton, { backgroundColor: colors.secondary }]}
+            onPress={addSampleData}
+            disabled={addingSamples}
+          >
+            {addingSamples ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Globe size={20} color="white" />
+                <Text style={styles.emptyActionText}>Add Sample Data</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      )}
+    </Animatable.View>
+  )
+
+  // Calculate filter counts
   const getFilterCounts = () => {
     return {
       all: organizations.length,
@@ -314,19 +321,31 @@ export default function OrganizationsScreen({ navigation }: any) {
 
   const counts = getFilterCounts()
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text }]}>Loading organizations...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Organizations</Text>
         <Pressable
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate("AddOrganization")}
         >
-          <Plus size={18} color="white" />
-          <Text style={styles.addButtonText}>Add</Text>
+          <Plus size={20} color="white" />
         </Pressable>
       </View>
 
+      {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <Search size={20} color={colors.textSecondary} />
         <TextInput
@@ -362,62 +381,28 @@ export default function OrganizationsScreen({ navigation }: any) {
         </ScrollView>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading organizations...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.organizationsList}
-          contentContainerStyle={styles.organizationsListContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
-        >
-          {filteredOrganizations.length > 0 ? (
-            filteredOrganizations.map((org, index) => (
-              <OrganizationCard key={org.id} organization={org} index={index} />
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Shield size={64} color={colors.textSecondary} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No Organizations Found</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                {searchQuery || filterType !== "all"
-                  ? "Try changing your search or filters"
-                  : "Add your first organization to get started"}
+      {/* Organizations List */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {filteredOrganizations.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            <View style={styles.statsContainer}>
+              <Text style={[styles.statsText, { color: colors.textSecondary }]}>
+                Showing {filteredOrganizations.length} of {organizations.length} organizations
               </Text>
-
-              <View style={styles.emptyActions}>
-                <Pressable
-                  style={[styles.emptyActionButton, { backgroundColor: colors.primary }]}
-                  onPress={() => navigation.navigate("AddOrganization")}
-                >
-                  <Plus size={20} color="white" />
-                  <Text style={styles.emptyActionButtonText}>Add Organization</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.emptyActionButton,
-                    { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
-                  ]}
-                  onPress={addSampleData}
-                  disabled={addingSamples}
-                >
-                  {addingSamples ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <>
-                      <Shield size={20} color={colors.text} />
-                      <Text style={[styles.emptyActionButtonText, { color: colors.text }]}>Add Sample Data</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
             </View>
-          )}
-        </ScrollView>
-      )}
+            {filteredOrganizations.map((org, index) => (
+              <OrganizationCard key={org.id} org={org} index={index} />
+            ))}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -426,43 +411,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: "Inter-Medium",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   title: {
     fontSize: 28,
     fontFamily: "Inter-Bold",
   },
   addButton: {
-    flexDirection: "row",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    gap: 6,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontFamily: "Inter-Medium",
-    color: "white",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 20,
-    paddingHorizontal: 16,
-    height: 48,
-    borderRadius: 24,
     marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
-    height: 48,
-    marginLeft: 8,
     fontSize: 16,
     fontFamily: "Inter-Regular",
   },
@@ -503,16 +491,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter-Bold",
   },
-  organizationsList: {
+  content: {
     flex: 1,
   },
-  organizationsListContent: {
-    padding: 20,
-    paddingBottom: 40,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  statsContainer: {
+    marginBottom: 16,
+  },
+  statsText: {
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
   },
   organizationCard: {
-    borderRadius: 16,
     padding: 16,
+    borderRadius: 16,
     marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -523,146 +518,125 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
-  cardHeaderLeft: {
+  orgInfo: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 12,
+    gap: 12,
   },
-  organizationLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  orgLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  orgLogoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
-  organizationInfo: {
+  orgDetails: {
     flex: 1,
   },
-  organizationName: {
+  orgName: {
     fontSize: 18,
     fontFamily: "Inter-SemiBold",
     marginBottom: 2,
   },
-  organizationDomain: {
+  orgDomain: {
     fontSize: 14,
     fontFamily: "Inter-Regular",
   },
-  statusBadge: {
+  statusContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    gap: 6,
   },
   statusText: {
     fontSize: 12,
     fontFamily: "Inter-Medium",
   },
-  organizationDescription: {
+  orgDescription: {
     fontSize: 14,
     fontFamily: "Inter-Regular",
     lineHeight: 20,
     marginBottom: 12,
   },
   walletContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     marginBottom: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 8,
   },
   walletLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter-Medium",
-    marginRight: 8,
+    marginBottom: 4,
   },
   walletAddress: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter-Regular",
+    fontFamily: "monospace",
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  orgMeta: {
     flex: 1,
+  },
+  metaText: {
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
   },
   cardActions: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 12,
-    flexWrap: "wrap",
   },
   actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    gap: 6,
-    flex: 1,
-    minWidth: 80,
-    justifyContent: "center",
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontFamily: "Inter-Medium",
-  },
-  cardMetadata: {
-    borderTopWidth: 1,
-    borderTopColor: "#EEEEEE",
-    paddingTop: 12,
-  },
-  metadataText: {
-    fontSize: 12,
-    fontFamily: "Inter-Regular",
-  },
-  loadingContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontFamily: "Inter-Regular",
-  },
-  emptyContainer: {
-    alignItems: "center",
+  emptyState: {
+    flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 60,
+    gap: 16,
   },
   emptyTitle: {
     fontSize: 20,
     fontFamily: "Inter-SemiBold",
-    marginTop: 16,
-    marginBottom: 8,
+    textAlign: "center",
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "Inter-Regular",
     textAlign: "center",
-    marginBottom: 24,
-    paddingHorizontal: 32,
+    lineHeight: 22,
+    maxWidth: screenWidth * 0.8,
   },
   emptyActions: {
+    flexDirection: "row",
     gap: 12,
-    width: "100%",
-    maxWidth: 300,
+    marginTop: 8,
   },
   emptyActionButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 24,
     gap: 8,
   },
-  emptyActionButtonText: {
-    fontSize: 16,
-    fontFamily: "Inter-Medium",
+  emptyActionText: {
     color: "white",
+    fontSize: 14,
+    fontFamily: "Inter-SemiBold",
   },
 })

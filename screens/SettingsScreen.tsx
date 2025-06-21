@@ -332,7 +332,7 @@ export default function SettingsScreen() {
                   <Text
                     style={[styles.infoValue, { color: blockchainStatus.connected ? colors.success : colors.error }]}
                   >
-                    {blockchainStatus.connected ? "Connected" : "Disconnected"}
+                    {blockchainStatus.connected ? "Connected With Algorand" : "Disconnected"}
                   </Text>
                 </View>
                 <View style={styles.infoItem}>

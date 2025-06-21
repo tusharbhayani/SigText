@@ -87,6 +87,26 @@ export interface MessageVerificationAttempt {
   created_at: string;
 }
 
+// Helper function to generate realistic wallet addresses
+const generateRealisticWalletAddress = (): string => {
+  const chars = '0123456789abcdef';
+  let result = '0x';
+  for (let i = 0; i < 40; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Helper function to generate realistic public keys
+const generateRealisticPublicKey = (): string => {
+  const chars = '0123456789abcdef';
+  let result = '04'; // Standard prefix for uncompressed public keys
+  for (let i = 0; i < 126; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 // Auth helpers
 export const signUp = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({
@@ -119,11 +139,11 @@ export const getCurrentUser = async () => {
 
 // Organization management
 export const createOrganization = async (orgData: Partial<Organization>) => {
-  if (!supabaseUrl) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     // Mock response for development without Supabase
     return {
       data: {
-        id: 'mock-id-' + Date.now(),
+        id: 'org-' + Date.now(),
         ...orgData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -132,68 +152,128 @@ export const createOrganization = async (orgData: Partial<Organization>) => {
     };
   }
 
-  const { data, error } = await supabase
-    .from('organizations')
-    .insert([orgData])
-    .select()
-    .single();
+  try {
+    console.log('Creating organization with data:', orgData);
 
-  return { data, error };
-};
-
-export const getOrganizations = async (verified_only = false) => {
-  if (!supabaseUrl) {
-    // Mock response for development without Supabase
-    return {
-      data: [
+    const { data, error } = await supabase
+      .from('organizations')
+      .insert([
         {
-          id: 'mock-org-1',
-          name: 'Acme Bank',
-          domain: 'acmebank.com',
-          description: 'Trusted financial institution',
-          wallet_address: '0x1111111111111111111111111111111111111111',
-          public_key:
-            '04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-          verification_status: 'verified',
-          logo_url:
-            'https://images.pexels.com/photos/259027/pexels-photo-259027.jpeg',
-          website_url: 'https://acmebank.com',
-          contact_email: 'security@acmebank.com',
+          ...orgData,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase create organization error:', error);
+
+      // Handle specific RLS error
+      if (error.code === '42501') {
+        return {
+          data: null,
+          error: {
+            message:
+              'Permission denied. Please check your Supabase Row Level Security policies or contact support.',
+          },
+        };
+      }
+
+      return { data: null, error };
+    }
+
+    console.log('Organization created successfully:', data);
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception in createOrganization:', error);
+    return {
+      data: null,
+      error: { message: 'Failed to create organization: ' + error.message },
+    };
+  }
+};
+
+export const getOrganizations = async (verified_only = false) => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Return completely dynamic mock data - NO STATIC ADDRESSES
+    const currentTime = Date.now();
+    return {
+      data: [
         {
-          id: 'mock-org-2',
-          name: 'Tech Solutions Inc',
-          domain: 'techsolutions.com',
-          description: 'Leading technology company',
-          wallet_address: '0x2222222222222222222222222222222222222222',
-          public_key:
-            '04b45c99f33d890e5f47c3d4c4d46a47eb17337f52d803fc93c7b67bd2d651e6ce',
+          id: 'org-' + currentTime + '-1',
+          name: 'CryptoSecure Technologies',
+          domain: 'cryptosecure.tech',
+          description: 'Advanced blockchain security solutions for enterprises',
+          wallet_address: generateRealisticWalletAddress(),
+          public_key: generateRealisticPublicKey(),
           verification_status: 'verified',
           logo_url:
             'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg',
-          website_url: 'https://techsolutions.com',
-          contact_email: 'verify@techsolutions.com',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          website_url: 'https://cryptosecure.tech',
+          contact_email: 'security@cryptosecure.tech',
+          created_at: new Date(currentTime - 86400000).toISOString(),
+          updated_at: new Date(currentTime - 86400000).toISOString(),
+        },
+        {
+          id: 'org-' + currentTime + '-2',
+          name: 'FinanceFlow Digital',
+          domain: 'financeflow.io',
+          description: 'Digital banking and financial verification services',
+          wallet_address: generateRealisticWalletAddress(),
+          public_key: generateRealisticPublicKey(),
+          verification_status: 'verified',
+          logo_url:
+            'https://images.pexels.com/photos/259027/pexels-photo-259027.jpeg',
+          website_url: 'https://financeflow.io',
+          contact_email: 'verify@financeflow.io',
+          created_at: new Date(currentTime - 172800000).toISOString(),
+          updated_at: new Date(currentTime - 172800000).toISOString(),
+        },
+        {
+          id: 'org-' + currentTime + '-3',
+          name: 'MedChain Innovations',
+          domain: 'medchain.health',
+          description:
+            'Healthcare blockchain solutions and patient data verification',
+          wallet_address: generateRealisticWalletAddress(),
+          public_key: generateRealisticPublicKey(),
+          verification_status: 'pending',
+          logo_url:
+            'https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg',
+          website_url: 'https://medchain.health',
+          contact_email: 'support@medchain.health',
+          created_at: new Date(currentTime - 259200000).toISOString(),
+          updated_at: new Date(currentTime - 259200000).toISOString(),
         },
       ],
       error: null,
     };
   }
 
-  let query = supabase
-    .from('organizations')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    let query = supabase
+      .from('organizations')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (verified_only) {
-    query = query.eq('verification_status', 'verified');
+    if (verified_only) {
+      query = query.eq('verification_status', 'verified');
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Supabase get organizations error:', error);
+      return { data: [], error };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error('Exception in getOrganizations:', error);
+    return { data: [], error: { message: 'Failed to fetch organizations' } };
   }
-
-  const { data, error } = await query;
-  return { data, error };
 };
 
 // Enhanced error handling wrapper
@@ -210,7 +290,9 @@ const handleSupabaseError = (error: any, operation: string) => {
 
   if (error?.code === '42501') {
     return {
-      error: { message: 'Permission denied - check your access rights' },
+      error: {
+        message: 'Permission denied - please check your database permissions',
+      },
     };
   }
 
@@ -220,7 +302,7 @@ const handleSupabaseError = (error: any, operation: string) => {
 // Enhanced getMessages with better error handling
 export async function getMessages(limit = 50) {
   try {
-    if (!supabaseUrl) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       return getMockMessages();
     }
 
@@ -260,40 +342,75 @@ export async function getMessages(limit = 50) {
   }
 }
 
-// Mock messages for fallback
+// Mock messages for fallback with completely dynamic data
 function getMockMessages() {
+  const currentTime = Date.now();
+  const companies = [
+    'CryptoSecure Technologies',
+    'FinanceFlow Digital',
+    'MedChain Innovations',
+  ];
+
   return {
     data: [
       {
-        id: 'mock-1',
-        sender: 'Acme Bank',
-        content:
-          'Your account balance is $1,250.00. Transaction verified with blockchain signature.',
+        id: 'msg-' + currentTime + '-1',
+        sender: companies[0],
+        content: `Account verification completed. Balance: $${(
+          Math.random() * 50000 +
+          1000
+        ).toFixed(2)}. Ref: ${Math.random()
+          .toString(36)
+          .substr(2, 8)
+          .toUpperCase()}`,
         signature:
-          'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
-        timestamp: new Date().toISOString(),
+          '0x' +
+          Array.from({ length: 128 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join(''),
+        timestamp: new Date(
+          currentTime - Math.random() * 3600000
+        ).toISOString(),
         verified: true,
-        organization_id: 'mock-org-1',
+        organization_id: 'org-' + currentTime + '-1',
       },
       {
-        id: 'mock-2',
-        sender: 'Security Alert System',
-        content:
-          'New device login detected from IP 192.168.1.100. Please verify if this was you.',
+        id: 'msg-' + currentTime + '-2',
+        sender: companies[1],
+        content: `Security Alert: Login from ${
+          ['New York', 'London', 'Tokyo', 'Sydney', 'Berlin'][
+            Math.floor(Math.random() * 5)
+          ]
+        } at ${new Date().toLocaleTimeString()}`,
         signature:
-          '1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
+          '0x' +
+          Array.from({ length: 128 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join(''),
+        timestamp: new Date(
+          currentTime - Math.random() * 7200000
+        ).toISOString(),
         verified: true,
-        organization_id: 'mock-org-2',
+        organization_id: 'org-' + currentTime + '-2',
       },
       {
-        id: 'mock-3',
-        sender: 'Payment Processor',
-        content:
-          'Payment of $50.00 received from John Doe. Transaction ID: TXN123456',
+        id: 'msg-' + currentTime + '-3',
+        sender: companies[2],
+        content: `Appointment confirmed for ${new Date(
+          Date.now() + 86400000
+        ).toLocaleDateString()} at ${
+          Math.floor(Math.random() * 12) + 1
+        }:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${
+          Math.random() > 0.5 ? 'AM' : 'PM'
+        }`,
         signature:
-          'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a1',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
+          '0x' +
+          Array.from({ length: 128 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join(''),
+        timestamp: new Date(
+          currentTime - Math.random() * 10800000
+        ).toISOString(),
         verified: false,
         organization_id: null,
       },
@@ -303,33 +420,53 @@ function getMockMessages() {
 }
 
 export const getOrganizationByWallet = async (walletAddress: string) => {
-  if (!supabaseUrl) {
-    // Mock response for development without Supabase
-    if (walletAddress === '0x1111111111111111111111111111111111111111') {
-      return {
-        data: {
-          id: 'mock-org-1',
-          name: 'Acme Bank',
-          verification_status: 'verified',
-        },
-        error: null,
-      };
-    }
-    return { data: null, error: null };
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Mock response with completely dynamic data
+    const mockOrgs = [
+      {
+        id: 'org-' + Date.now() + '-1',
+        name: 'CryptoSecure Technologies',
+        verification_status: 'verified',
+        wallet_address: generateRealisticWalletAddress(),
+      },
+      {
+        id: 'org-' + Date.now() + '-2',
+        name: 'FinanceFlow Digital',
+        verification_status: 'verified',
+        wallet_address: generateRealisticWalletAddress(),
+      },
+    ];
+
+    const found = mockOrgs.find(
+      (org) => org.wallet_address.toLowerCase() === walletAddress.toLowerCase()
+    );
+    return { data: found || null, error: null };
   }
 
-  const { data, error } = await supabase.rpc('get_organization_by_wallet', {
-    wallet_addr: walletAddress,
-  });
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('wallet_address', walletAddress)
+      .single();
 
-  return { data: data?.[0] || null, error };
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching organization by wallet:', error);
+      return { data: null, error };
+    }
+
+    return { data: data || null, error: null };
+  } catch (error) {
+    console.error('Exception in getOrganizationByWallet:', error);
+    return { data: null, error: { message: 'Failed to fetch organization' } };
+  }
 };
 
 export const updateOrganization = async (
   id: string,
   updates: Partial<Organization>
 ) => {
-  if (!supabaseUrl) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     // Mock response for development without Supabase
     return {
       data: {
@@ -341,14 +478,24 @@ export const updateOrganization = async (
     };
   }
 
-  const { data, error } = await supabase
-    .from('organizations')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
-  return { data, error };
+    if (error) {
+      console.error('Supabase update organization error:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception in updateOrganization:', error);
+    return { data: null, error: { message: 'Failed to update organization' } };
+  }
 };
 
 // Enhanced verification with better error handling
@@ -357,18 +504,27 @@ export const verifyMessage = async (
   signature: string,
   senderAddress: string
 ) => {
-  if (!supabaseUrl) {
-    // Enhanced mock response
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Enhanced mock response with realistic verification
+    const isValidSignature =
+      signature.length >= 64 && messageContent.length > 0;
+    const mockOrgId = 'org-' + Date.now() + '-1';
+
     return {
       data: {
-        is_valid: signature.length >= 64 && messageContent.length > 0,
-        organization_id: 'mock-org-1',
-        organization_name: 'Mock Organization',
+        is_valid: isValidSignature,
+        organization_id: isValidSignature ? mockOrgId : null,
+        organization_name: isValidSignature
+          ? 'CryptoSecure Technologies'
+          : null,
         verification_details: {
           timestamp: Date.now(),
           method: 'mock',
           signature_format: 'hex',
-          message_hash: messageContent.substring(0, 8),
+          message_hash: Array.from({ length: 8 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join(''),
+          sender_address: senderAddress,
         },
       },
       error: null,
@@ -383,11 +539,13 @@ export const verifyMessage = async (
     });
 
     if (error) {
+      console.error('Message verification error:', error);
       return handleSupabaseError(error, 'message verification');
     }
 
     return { data: data?.[0] || null, error: null };
   } catch (error) {
+    console.error('Exception in verifyMessage:', error);
     return handleSupabaseError(error, 'message verification');
   }
 };
@@ -395,11 +553,11 @@ export const verifyMessage = async (
 export const saveVerifiedMessage = async (
   messageData: Partial<VerifiedMessage>
 ) => {
-  if (!supabaseUrl) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     // Mock response for development without Supabase
     return {
       data: {
-        id: 'mock-msg-' + Date.now(),
+        id: 'msg-' + Date.now(),
         ...messageData,
         created_at: new Date().toISOString(),
       },
@@ -407,49 +565,105 @@ export const saveVerifiedMessage = async (
     };
   }
 
-  const { data, error } = await supabase
-    .from('verified_messages')
-    .insert([messageData])
-    .select(
+  try {
+    const { data, error } = await supabase
+      .from('verified_messages')
+      .insert([
+        {
+          ...messageData,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select(
+        `
+        *,
+        organization:organizations(*)
       `
-      *,
-      organization:organizations(*)
-    `
-    )
-    .single();
+      )
+      .single();
 
-  return { data, error };
+    if (error) {
+      console.error('Error saving verified message:', error);
+
+      // Handle RLS error specifically
+      if (error.code === '42501') {
+        return {
+          data: null,
+          error: {
+            message:
+              'Permission denied. Please check your database permissions.',
+          },
+        };
+      }
+
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception in saveVerifiedMessage:', error);
+    return {
+      data: null,
+      error: { message: 'Failed to save verified message' },
+    };
+  }
 };
 
 export const getVerifiedMessages = async (limit = 50) => {
-  if (!supabaseUrl) {
-    // Mock response for development without Supabase
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Mock response with completely dynamic data
+    const currentTime = Date.now();
+    const companies = [
+      'CryptoSecure Technologies',
+      'FinanceFlow Digital',
+      'MedChain Innovations',
+    ];
+
     return {
       data: [
         {
-          id: 'mock-msg-1',
-          message_content:
-            'Your account balance is $1,250.00. Transaction ID: TX123456',
+          id: 'msg-' + currentTime + '-1',
+          message_content: `Account balance updated: $${(
+            Math.random() * 50000 +
+            1000
+          ).toFixed(2)}. Transaction: ${Math.random()
+            .toString(36)
+            .substr(2, 8)
+            .toUpperCase()}`,
           signature:
-            'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789012345678901234567890abcdef1234567890abcdef123456',
-          sender_address: '0x1111111111111111111111111111111111111111',
+            '0x' +
+            Array.from({ length: 128 }, () =>
+              Math.floor(Math.random() * 16).toString(16)
+            ).join(''),
+          sender_address: generateRealisticWalletAddress(),
           verification_status: 'verified',
-          created_at: new Date().toISOString(),
+          created_at: new Date(
+            currentTime - Math.random() * 86400000
+          ).toISOString(),
           organization: {
-            name: 'Acme Bank',
+            name: companies[0],
             verification_status: 'verified',
           },
         },
         {
-          id: 'mock-msg-2',
-          message_content: 'Security alert: New device login detected',
+          id: 'msg-' + currentTime + '-2',
+          message_content: `Security notification: Device login from ${
+            ['New York', 'London', 'Tokyo', 'Sydney', 'Berlin'][
+              Math.floor(Math.random() * 5)
+            ]
+          }`,
           signature:
-            '1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567890abcdef0123456789abcdef0123456789abcdef',
-          sender_address: '0x2222222222222222222222222222222222222222',
+            '0x' +
+            Array.from({ length: 128 }, () =>
+              Math.floor(Math.random() * 16).toString(16)
+            ).join(''),
+          sender_address: generateRealisticWalletAddress(),
           verification_status: 'verified',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
+          created_at: new Date(
+            currentTime - Math.random() * 172800000
+          ).toISOString(),
           organization: {
-            name: 'Tech Solutions Inc',
+            name: companies[1],
             verification_status: 'verified',
           },
         },
@@ -458,28 +672,41 @@ export const getVerifiedMessages = async (limit = 50) => {
     };
   }
 
-  const { data, error } = await supabase
-    .from('verified_messages')
-    .select(
+  try {
+    const { data, error } = await supabase
+      .from('verified_messages')
+      .select(
+        `
+        *,
+        organization:organizations(name, verification_status, logo_url)
       `
-      *,
-      organization:organizations(name, verification_status, logo_url)
-    `
-    )
-    .order('created_at', { ascending: false })
-    .limit(limit);
+      )
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-  return { data, error };
+    if (error) {
+      console.error('Error fetching verified messages:', error);
+      return { data: [], error };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error('Exception in getVerifiedMessages:', error);
+    return {
+      data: [],
+      error: { message: 'Failed to fetch verified messages' },
+    };
+  }
 };
 
 export const recordVerificationAttempt = async (
   attemptData: Partial<MessageVerificationAttempt>
 ) => {
-  if (!supabaseUrl) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     // Mock response for development without Supabase
     return {
       data: {
-        id: 'mock-attempt-' + Date.now(),
+        id: 'attempt-' + Date.now(),
         ...attemptData,
         created_at: new Date().toISOString(),
       },
@@ -487,20 +714,33 @@ export const recordVerificationAttempt = async (
     };
   }
 
-  const { data, error } = await supabase
-    .from('message_verification_attempts')
-    .insert([attemptData])
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('message_verification_attempts')
+      .insert([attemptData])
+      .select()
+      .single();
 
-  return { data, error };
+    if (error) {
+      console.error('Error recording verification attempt:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception in recordVerificationAttempt:', error);
+    return {
+      data: null,
+      error: { message: 'Failed to record verification attempt' },
+    };
+  }
 };
 
 // Real-time subscriptions
 export const subscribeToVerifiedMessages = (
   callback: (payload: any) => void
 ) => {
-  if (!supabaseUrl) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     // Mock subscription for development without Supabase
     console.log('Mock subscription created (no Supabase URL)');
     return {
@@ -522,47 +762,46 @@ export const subscribeToVerifiedMessages = (
     .subscribe();
 };
 
-// Utility functions for testing
+// Utility functions for testing with completely dynamic data
 export const addSampleOrganizations = async () => {
+  const currentTime = Date.now();
   const sampleOrgs = [
     {
-      name: 'Acme Bank',
-      domain: 'acmebank.com',
-      description: 'Trusted financial institution',
-      wallet_address: '0x1111111111111111111111111111111111111111',
-      public_key:
-        '04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-      verification_status: 'verified' as const,
-      logo_url:
-        'https://images.pexels.com/photos/259027/pexels-photo-259027.jpeg',
-      website_url: 'https://acmebank.com',
-      contact_email: 'security@acmebank.com',
-    },
-    {
-      name: 'Tech Solutions Inc',
-      domain: 'techsolutions.com',
-      description: 'Leading technology company',
-      wallet_address: '0x2222222222222222222222222222222222222222',
-      public_key:
-        '04b45c99f33d890e5f47c3d4c4d46a47eb17337f52d803fc93c7b67bd2d651e6ce',
+      name: 'CryptoSecure Technologies',
+      domain: 'cryptosecure.tech',
+      description: 'Advanced blockchain security solutions for enterprises',
+      wallet_address: generateRealisticWalletAddress(),
+      public_key: generateRealisticPublicKey(),
       verification_status: 'verified' as const,
       logo_url:
         'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg',
-      website_url: 'https://techsolutions.com',
-      contact_email: 'verify@techsolutions.com',
+      website_url: 'https://cryptosecure.tech',
+      contact_email: 'security@cryptosecure.tech',
     },
     {
-      name: 'Digital Identity Bureau',
-      domain: 'digitalid.gov',
-      description: 'Government digital identity services',
-      wallet_address: '0x3333333333333333333333333333333333333333',
-      public_key:
-        '04c56d99f44e901f6f58d4e5d5e57b58fc28448g63e914gd04d8c78ce3e762f7df',
+      name: 'FinanceFlow Digital',
+      domain: 'financeflow.io',
+      description: 'Digital banking and financial verification services',
+      wallet_address: generateRealisticWalletAddress(),
+      public_key: generateRealisticPublicKey(),
       verification_status: 'verified' as const,
       logo_url:
+        'https://images.pexels.com/photos/259027/pexels-photo-259027.jpeg',
+      website_url: 'https://financeflow.io',
+      contact_email: 'verify@financeflow.io',
+    },
+    {
+      name: 'MedChain Innovations',
+      domain: 'medchain.health',
+      description:
+        'Healthcare blockchain solutions and patient data verification',
+      wallet_address: generateRealisticWalletAddress(),
+      public_key: generateRealisticPublicKey(),
+      verification_status: 'pending' as const,
+      logo_url:
         'https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg',
-      website_url: 'https://digitalid.gov',
-      contact_email: 'support@digitalid.gov',
+      website_url: 'https://medchain.health',
+      contact_email: 'support@medchain.health',
     },
   ];
 
@@ -575,31 +814,47 @@ export const addSampleOrganizations = async () => {
   return results;
 };
 
-// Add sample messages function
+// Add sample messages function with dynamic data
 export const addSampleMessages = async () => {
+  const currentTime = Date.now();
   const sampleMessages = [
     {
       organization_id: null,
-      message_content:
-        'Your account balance is $1,250.00. Transaction ID: TX123456',
+      message_content: `Account balance updated: $${(
+        Math.random() * 50000 +
+        1000
+      ).toFixed(2)}. Transaction: ${Math.random()
+        .toString(36)
+        .substr(2, 8)
+        .toUpperCase()}`,
       signature:
-        'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789012345678901234567890abcdef1234567890abcdef123456',
-      sender_address: '0x1111111111111111111111111111111111111111',
+        '0x' +
+        Array.from({ length: 128 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join(''),
+      sender_address: generateRealisticWalletAddress(),
       verification_status: 'verified' as const,
       verification_details: {
-        timestamp: Date.now(),
+        timestamp: currentTime,
         method: 'blockchain',
       },
     },
     {
       organization_id: null,
-      message_content: 'Security alert: New device login detected',
+      message_content: `Security alert: Login detected from ${
+        ['New York', 'London', 'Tokyo', 'Sydney', 'Berlin'][
+          Math.floor(Math.random() * 5)
+        ]
+      }`,
       signature:
-        '1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567890abcdef0123456789abcdef0123456789abcdef',
-      sender_address: '0x2222222222222222222222222222222222222222',
+        '0x' +
+        Array.from({ length: 128 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join(''),
+      sender_address: generateRealisticWalletAddress(),
       verification_status: 'verified' as const,
       verification_details: {
-        timestamp: Date.now(),
+        timestamp: currentTime,
         method: 'blockchain',
       },
     },
@@ -614,20 +869,37 @@ export const addSampleMessages = async () => {
   return results;
 };
 
-// Test message verification
+// Test message verification with dynamic data
 export const testMessageVerification = async () => {
+  const currentTime = Date.now();
   const testCases = [
     {
-      message: 'Your account balance is $1,250.00. Transaction ID: TX123456',
+      message: `Account balance updated: $${(
+        Math.random() * 50000 +
+        1000
+      ).toFixed(2)}. Transaction: ${Math.random()
+        .toString(36)
+        .substr(2, 8)
+        .toUpperCase()}`,
       signature:
-        'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789012345678901234567890abcdef1234567890abcdef123456',
-      sender: '0x1111111111111111111111111111111111111111',
+        '0x' +
+        Array.from({ length: 128 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join(''),
+      sender: generateRealisticWalletAddress(),
     },
     {
-      message: 'Security alert: New device login detected',
+      message: `Security alert: Login detected from ${
+        ['New York', 'London', 'Tokyo', 'Sydney', 'Berlin'][
+          Math.floor(Math.random() * 5)
+        ]
+      }`,
       signature:
-        '1a2b3c4d5e6f7890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567890abcdef0123456789abcdef0123456789abcdef',
-      sender: '0x2222222222222222222222222222222222222222',
+        '0x' +
+        Array.from({ length: 128 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join(''),
+      sender: generateRealisticWalletAddress(),
     },
   ];
 
